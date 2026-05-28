@@ -56,6 +56,18 @@ export interface SnapPoint {
   connectors: Connector[]
 }
 
+/**
+ * Alvo em que uma peça pode encaixar (Step 2 do wizard, lado "entrada").
+ * Token: categoria inteira OU peça específica (pra Outros).
+ *   'Torres' | 'Bases' | 'Cubos' | 'Outros' | 'piece:<TYPE>'
+ */
+export type AttachTarget =
+  | 'Torres'
+  | 'Bases'
+  | 'Cubos'
+  | 'Outros'
+  | `piece:${string}`
+
 export const pieceCatalog = pgTable('piece_catalog', {
   id: uuid('id').defaultRandom().primaryKey(),
   /** Slug estável usado pelo código do front (ex: 'TORRE_0_5M'). */
@@ -77,6 +89,16 @@ export const pieceCatalog = pgTable('piece_catalog', {
   productUrl: text('product_url'),
   /** Offset Y de spawn (m). Usado pra pôr bases ligeiramente acima do chão. */
   spawnYOffset: real('spawn_y_offset').notNull().default(0),
+  /**
+   * STEP 1 — Pose de repouso da peça quando colocada sozinha (spawn).
+   * Define a orientação inicial / referencial de rotação. null = identidade.
+   */
+  spawnPose: jsonb('spawn_pose').$type<SnapPose | null>(),
+  /**
+   * STEP 2 (lado entrada) — em quais alvos ESTA peça pode encaixar.
+   * Lista de tokens (categoria ou piece:<TYPE>). [] = não encaixa em nada.
+   */
+  attachableTo: jsonb('attachable_to').$type<AttachTarget[]>().notNull().default([]),
   /**
    * Pose de ENTRADA — como ESTA peça se posiciona quando é encaixada
    * em outra. Relativa ao snap point host. Default null = encaixa "na

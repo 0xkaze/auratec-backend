@@ -64,6 +64,13 @@
       "when": 1779950000000,
       "tag": "0008_logs_versions_sharing",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1779955000000,
+      "tag": "0009_piece_wizard_fields",
+      "breakpoints": true
     }
   ]
 }

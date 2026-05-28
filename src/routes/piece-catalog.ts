@@ -5,7 +5,7 @@ import { mkdir, writeFile, unlink } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { db } from '@/db/client'
-import { pieceCatalog } from '@/db/schema'
+import { pieceCatalog, type AttachTarget } from '@/db/schema'
 import { requirePerm, requireAuth, type AuthVariables } from '@/auth/middleware'
 import { parseJsonBody, parseParams } from '@/lib/validate'
 import { ok, created, fail, noContent } from '@/lib/http'
@@ -50,6 +50,15 @@ const upsertSchema = z.object({
   sku: z.string().trim().max(64).nullable().optional(),
   productUrl: z.string().url().max(2048).nullable().optional(),
   spawnYOffset: z.number().default(0),
+  spawnPose: snapPoseSchema.nullable().optional(),
+  attachableTo: z
+    .array(
+      z.union([
+        z.enum(['Torres', 'Bases', 'Cubos', 'Outros']),
+        z.string().regex(/^piece:[A-Z0-9_]+$/),
+      ]),
+    )
+    .optional(),
   inputPose: snapPoseSchema.nullable().optional(),
   snapPoints: z.array(snapPointSchema),
   isActive: z.boolean().default(true),
@@ -103,7 +112,10 @@ pieceCatalogRoutes.get('/:id', requireAuth, requirePerm('manage_catalog'), async
  */
 pieceCatalogRoutes.post('/', requireAuth, requirePerm('manage_catalog'), async (c) => {
   const body = await parseJsonBody(c, upsertSchema)
-  const [row] = await db.insert(pieceCatalog).values(body).returning()
+  const [row] = await db
+    .insert(pieceCatalog)
+    .values({ ...body, attachableTo: body.attachableTo as AttachTarget[] | undefined })
+    .returning()
   if (!row) return fail(c, 'INSERT_FAILED', 'Falha ao criar peça', 500)
   logActivity({
     userId: c.get('user').sub,
@@ -124,7 +136,7 @@ pieceCatalogRoutes.patch('/:id', requireAuth, requirePerm('manage_catalog'), asy
   const body = await parseJsonBody(c, partialUpdateSchema)
   const [row] = await db
     .update(pieceCatalog)
-    .set({ ...body, updatedAt: new Date() })
+    .set({ ...body, attachableTo: body.attachableTo as AttachTarget[] | undefined, updatedAt: new Date() })
     .where(eq(pieceCatalog.id, id))
     .returning()
   if (!row) return fail(c, 'NOT_FOUND', 'Peça não encontrada', 404)
