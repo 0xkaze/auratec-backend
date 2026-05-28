@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, jsonb, timestamp, index } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, varchar, text, jsonb, timestamp, boolean, index } from 'drizzle-orm/pg-core'
 import { users } from './users'
 
 /**
@@ -21,6 +21,9 @@ export const projects = pgTable(
     pieces: jsonb('pieces').notNull().$type<unknown[]>().default([]),
     /** Snapshot 3D (dataURL JPEG pequeno) capturado no save. NULL = sem preview. */
     thumbnail: text('thumbnail'),
+    /** Slug público pra compartilhar em modo leitura. NULL = não compartilhado. */
+    shareId: varchar('share_id', { length: 24 }).unique(),
+    isPublic: boolean('is_public').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

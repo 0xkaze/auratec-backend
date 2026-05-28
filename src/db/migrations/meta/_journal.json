@@ -57,6 +57,13 @@
       "when": 1779945000000,
       "tag": "0007_project_thumbnail",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1779950000000,
+      "tag": "0008_logs_versions_sharing",
+      "breakpoints": true
     }
   ]
 }

@@ -9,6 +9,7 @@ import { authRoutes } from '@/routes/auth'
 import { projectsRoutes } from '@/routes/projects'
 import { pieceCatalogRoutes } from '@/routes/piece-catalog'
 import { adminRoutes } from '@/routes/admin'
+import { publicRoutes } from '@/routes/public'
 import { fail } from '@/lib/http'
 
 const app = new Hono()
@@ -61,6 +62,7 @@ api.route('/auth', authRoutes)
 api.route('/projects', projectsRoutes)
 api.route('/piece-catalog', pieceCatalogRoutes)
 api.route('/admin', adminRoutes)
+api.route('/public', publicRoutes)
 app.route('/api', api)
 
 // ---- Error handler global ----

@@ -10,6 +10,7 @@ import { requirePerm, requireAuth, type AuthVariables } from '@/auth/middleware'
 import { parseJsonBody, parseParams } from '@/lib/validate'
 import { ok, created, fail, noContent } from '@/lib/http'
 import { getUserLimits } from '@/services/platform-settings'
+import { logActivity } from '@/services/activity-log'
 
 const vec3 = z.tuple([z.number(), z.number(), z.number()])
 const snapPoseSchema = z.object({ position: vec3, rotation: vec3 })
@@ -104,6 +105,13 @@ pieceCatalogRoutes.post('/', requireAuth, requirePerm('manage_catalog'), async (
   const body = await parseJsonBody(c, upsertSchema)
   const [row] = await db.insert(pieceCatalog).values(body).returning()
   if (!row) return fail(c, 'INSERT_FAILED', 'Falha ao criar peça', 500)
+  logActivity({
+    userId: c.get('user').sub,
+    action: 'piece.create',
+    entityType: 'piece',
+    entityId: row.id,
+    metadata: { name: row.name, type: row.type },
+  })
   return created(c, row)
 })
 
@@ -120,6 +128,13 @@ pieceCatalogRoutes.patch('/:id', requireAuth, requirePerm('manage_catalog'), asy
     .where(eq(pieceCatalog.id, id))
     .returning()
   if (!row) return fail(c, 'NOT_FOUND', 'Peça não encontrada', 404)
+  logActivity({
+    userId: c.get('user').sub,
+    action: 'piece.update',
+    entityType: 'piece',
+    entityId: row.id,
+    metadata: { name: row.name, type: row.type },
+  })
   return ok(c, row)
 })
 
@@ -134,6 +149,13 @@ pieceCatalogRoutes.delete('/:id', requireAuth, requirePerm('manage_catalog'), as
   if (!row) return fail(c, 'NOT_FOUND', 'Peça não encontrada', 404)
 
   await db.delete(pieceCatalog).where(eq(pieceCatalog.id, id))
+  logActivity({
+    userId: c.get('user').sub,
+    action: 'piece.delete',
+    entityType: 'piece',
+    entityId: id,
+    metadata: { name: row.name, type: row.type },
+  })
 
   // Remove o GLB se foi um upload (caminho /objetos/<filename>).
   // Não toca em GLBs externos (URLs http://...).

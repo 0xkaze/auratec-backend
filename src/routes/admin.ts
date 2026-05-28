@@ -9,6 +9,7 @@ import {
   users,
   projects,
   pieceCatalog,
+  activityLogs,
   toPublicUser,
   PERMISSIONS,
   type Permission,
@@ -27,6 +28,7 @@ import {
   setSignupPolicy,
   setUserLimits,
 } from '@/services/platform-settings'
+import { logActivity } from '@/services/activity-log'
 
 const idParam = z.object({ id: z.string().uuid() })
 
@@ -121,6 +123,13 @@ adminRoutes.patch('/users/:id', requirePerm('manage_users'), async (c) => {
     .where(eq(users.id, id))
     .returning()
   if (!row) return fail(c, 'NOT_FOUND', 'Usuário não encontrado', 404)
+  logActivity({
+    userId: me.sub,
+    action: 'user.update',
+    entityType: 'user',
+    entityId: row.id,
+    metadata: { name: row.name, changed: Object.keys(body) },
+  })
   return ok(c, toPublicUser(row))
 })
 
@@ -279,6 +288,41 @@ adminRoutes.get('/system-info', requirePerm('view_admin'), async (c) => {
       catalogPieces: pieceCount?.n ?? 0,
     },
   })
+})
+
+// ============================================================
+//  Logs de atividade
+// ============================================================
+
+/**
+ * GET /admin/logs — lista logs de atividade (mais recentes primeiro).
+ * Faz JOIN leve com users pra trazer nome/email de quem agiu.
+ * Query params: ?limit=100 (default), ?action=project.create (filtro opcional).
+ */
+adminRoutes.get('/logs', requirePerm('view_admin'), async (c) => {
+  const limitRaw = Number(c.req.query('limit') ?? '100')
+  const limit = Math.min(Math.max(Number.isFinite(limitRaw) ? limitRaw : 100, 1), 500)
+  const actionFilter = c.req.query('action')?.trim()
+
+  const rows = await db
+    .select({
+      id: activityLogs.id,
+      action: activityLogs.action,
+      entityType: activityLogs.entityType,
+      entityId: activityLogs.entityId,
+      projectId: activityLogs.projectId,
+      metadata: activityLogs.metadata,
+      createdAt: activityLogs.createdAt,
+      userId: activityLogs.userId,
+      userName: users.name,
+      userEmail: users.email,
+    })
+    .from(activityLogs)
+    .leftJoin(users, eq(activityLogs.userId, users.id))
+    .where(actionFilter ? eq(activityLogs.action, actionFilter) : undefined)
+    .orderBy(desc(activityLogs.createdAt))
+    .limit(limit)
+  return ok(c, rows)
 })
 
 /**
