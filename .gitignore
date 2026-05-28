@@ -1,0 +1,31 @@
+node_modules/
+dist/
+.drizzle/
+
+# Bun
+bun.lockb
+
+# Env (com segredos)
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Postgres data (quando rodando local sem docker)
+pgdata/
+
+# Uploads (GLBs) — não versionar binários grandes. Em prod usar S3.
+uploads/

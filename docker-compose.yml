@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: auratec-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: auratec
+      POSTGRES_PASSWORD: auratec
+      POSTGRES_DB: auratec
+    # Mapeado pra 5433 no host pra não conflitar com Postgres local (5432).
+    # Ajuste DATABASE_URL no .env se mudar isso.
+    ports:
+      - "5433:5432"
+    volumes:
+      - auratec-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auratec -d auratec"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  auratec-pgdata:
