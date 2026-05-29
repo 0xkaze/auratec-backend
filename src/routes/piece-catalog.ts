@@ -16,10 +16,11 @@ const vec3 = z.tuple([z.number(), z.number(), z.number()])
 const snapPoseSchema = z.object({ position: vec3, rotation: vec3 })
 
 const hostSlotSchema = z.object({
-  target: z.enum(['Torres', 'Bases', 'Cubos', 'Outros', 'self']),
-  enabled: z.boolean(),
-  direction: z.enum(['top', 'bottom']),
+  id: z.string().min(1).max(64),
+  label: z.string().min(1).max(120),
   pose: snapPoseSchema,
+  direction: z.enum(['top', 'bottom']),
+  targets: z.array(z.enum(['Torres', 'Bases', 'Cubos', 'Outros', 'self'])),
 })
 
 const upsertSchema = z.object({

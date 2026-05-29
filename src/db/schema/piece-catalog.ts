@@ -41,18 +41,19 @@ export type AttachTarget =
 export type HostSlotTarget = 'Torres' | 'Bases' | 'Cubos' | 'Outros' | 'self'
 
 /**
- * HostSlot = como UM tipo de alvo encaixa NESTA peça (Step 3).
- *   target:    qual alvo (categoria ou 'self').
- *   enabled:   se este encaixe está habilitado.
- *   direction: 'top' = guest entra usando a âncora dock_above (fica em cima);
- *              'bottom' = usa dock_below (fica embaixo).
+ * HostSlot = um PONTO DE ENCAIXE na peça (Step 3). Pode haver vários.
+ *   id/label:  identificação do ponto.
  *   pose:      local (frame da peça) onde o guest encaixa.
+ *   direction: 'top' = guest entra usando dock_above (fica em cima);
+ *              'bottom' = usa dock_below (fica embaixo).
+ *   targets:   quais tipos de peça podem encaixar neste ponto.
  */
 export interface HostSlot {
-  target: HostSlotTarget
-  enabled: boolean
-  direction: 'top' | 'bottom'
+  id: string
+  label: string
   pose: SnapPose
+  direction: 'top' | 'bottom'
+  targets: HostSlotTarget[]
 }
 
 export const pieceCatalog = pgTable('piece_catalog', {

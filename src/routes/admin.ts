@@ -71,7 +71,7 @@ adminRoutes.get('/stats', requirePerm('view_admin'), async (c) => {
     (p) =>
       p.dockAbove !== null ||
       p.dockBelow !== null ||
-      (Array.isArray(p.hostSlots) && p.hostSlots.some((s) => s.enabled)),
+      (Array.isArray(p.hostSlots) && p.hostSlots.some((s) => s.targets.length > 0)),
   ).length
   return ok(c, {
     users: userCount?.n ?? 0,
