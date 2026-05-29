@@ -71,6 +71,13 @@
       "when": 1779955000000,
       "tag": "0009_piece_wizard_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1779960000000,
+      "tag": "0010_configurator_v2",
+      "breakpoints": true
     }
   ]
 }

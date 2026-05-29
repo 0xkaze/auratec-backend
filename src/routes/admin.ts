@@ -69,7 +69,9 @@ adminRoutes.get('/stats', requirePerm('view_admin'), async (c) => {
   const outrosTotal = outros.length
   const outrosConfigured = outros.filter(
     (p) =>
-      p.inputPose !== null || (Array.isArray(p.snapPoints) && p.snapPoints.length > 0),
+      p.dockAbove !== null ||
+      p.dockBelow !== null ||
+      (Array.isArray(p.hostSlots) && p.hostSlots.some((s) => s.enabled)),
   ).length
   return ok(c, {
     users: userCount?.n ?? 0,

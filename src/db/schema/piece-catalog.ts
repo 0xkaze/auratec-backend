@@ -24,39 +24,6 @@ export interface SnapPose {
 }
 
 /**
- * Connector = uma regra de "o que pode encaixar neste snap point + como".
- *
- *   match.type='category': qualquer peça da categoria informada usa este
- *     mesmo offset (Torres, Bases e Cubos têm geometria padrão, basta
- *     configurar 1x por categoria).
- *   match.type='piece':    pra peças 'Outros' cada type tem geometria
- *     própria — configura individualmente (ex.: 'piece:CUMEEIRA').
- *
- * offset: ajuste fino opcional. Default identity (peça encaixa "no" snap).
- */
-export interface Connector {
-  match:
-    | { type: 'category'; category: 'Torres' | 'Bases' | 'Cubos' }
-    | { type: 'piece'; pieceType: string }
-  offset: SnapPose
-}
-
-/**
- * Snap point = local da peça onde OUTRAS peças podem encaixar. Tem N
- * connectors (um por regra de match).
- *   position/rotation são em LOCAL space da peça hosting.
- *   rotation define a "direção de saída": +Y local do snap aponta pra
- *     onde a próxima peça vai sair.
- */
-export interface SnapPoint {
-  id: string         // único na peça: 'main', 'left', 'topo', etc.
-  label: string      // display: "Ponta esquerda", "Topo"
-  position: [number, number, number]
-  rotation: [number, number, number]
-  connectors: Connector[]
-}
-
-/**
  * Alvo em que uma peça pode encaixar (Step 2 do wizard, lado "entrada").
  * Token: categoria inteira OU peça específica (pra Outros).
  *   'Torres' | 'Bases' | 'Cubos' | 'Outros' | 'piece:<TYPE>'
@@ -67,6 +34,26 @@ export type AttachTarget =
   | 'Cubos'
   | 'Outros'
   | `piece:${string}`
+
+/**
+ * Alvo de um HostSlot (Step 3): cada categoria + 'self' (a própria peça).
+ */
+export type HostSlotTarget = 'Torres' | 'Bases' | 'Cubos' | 'Outros' | 'self'
+
+/**
+ * HostSlot = como UM tipo de alvo encaixa NESTA peça (Step 3).
+ *   target:    qual alvo (categoria ou 'self').
+ *   enabled:   se este encaixe está habilitado.
+ *   direction: 'top' = guest entra usando a âncora dock_above (fica em cima);
+ *              'bottom' = usa dock_below (fica embaixo).
+ *   pose:      local (frame da peça) onde o guest encaixa.
+ */
+export interface HostSlot {
+  target: HostSlotTarget
+  enabled: boolean
+  direction: 'top' | 'bottom'
+  pose: SnapPose
+}
 
 export const pieceCatalog = pgTable('piece_catalog', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -100,22 +87,20 @@ export const pieceCatalog = pgTable('piece_catalog', {
    */
   attachableTo: jsonb('attachable_to').$type<AttachTarget[]>().notNull().default([]),
   /**
-   * Pose de ENTRADA — como ESTA peça se posiciona quando é encaixada
-   * em outra. Relativa ao snap point host. Default null = encaixa "na
-   * origem" do snap (sem ajuste).
-   *
-   * Renomeado de snap_pose pra ficar claro que é INPUT (do ponto de
-   * vista desta peça).
+   * STEP 2 — âncora quando ESTA peça entra EM CIMA de um host (snap top).
+   * null = identidade (encaixa na origem, orientação da spawnPose).
    */
-  inputPose: jsonb('input_pose').$type<SnapPose | null>(),
+  dockAbove: jsonb('dock_above').$type<SnapPose | null>(),
   /**
-   * Lista de SNAP POINTS — onde OUTRAS peças podem encaixar nesta.
-   * Cada snap tem N connectors (regras de "o que e como encaixa").
-   * Default [] = nenhum ponto de conexão (peça terminal).
-   *
-   * Substitui o output_snap único anterior — agora N snap points.
+   * STEP 2 — âncora quando ESTA peça entra EMBAIXO de um host (snap bottom).
+   * null = identidade.
    */
-  snapPoints: jsonb('snap_points').$type<SnapPoint[]>().notNull().default([]),
+  dockBelow: jsonb('dock_below').$type<SnapPose | null>(),
+  /**
+   * STEP 3 — slots fixos por alvo (Torres/Bases/Cubos/Outros/self):
+   * como cada tipo de peça encaixa NESTA. Default [] = nada encaixa.
+   */
+  hostSlots: jsonb('host_slots').$type<HostSlot[]>().notNull().default([]),
   /** Soft-delete pra admin "esconder" sem perder histórico. */
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

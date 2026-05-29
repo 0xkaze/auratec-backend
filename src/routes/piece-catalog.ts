@@ -15,26 +15,11 @@ import { logActivity } from '@/services/activity-log'
 const vec3 = z.tuple([z.number(), z.number(), z.number()])
 const snapPoseSchema = z.object({ position: vec3, rotation: vec3 })
 
-const connectorSchema = z.object({
-  match: z.discriminatedUnion('type', [
-    z.object({
-      type: z.literal('category'),
-      category: z.enum(['Torres', 'Bases', 'Cubos']),
-    }),
-    z.object({
-      type: z.literal('piece'),
-      pieceType: z.string().min(1).max(64),
-    }),
-  ]),
-  offset: snapPoseSchema,
-})
-
-const snapPointSchema = z.object({
-  id: z.string().min(1).max(64),
-  label: z.string().min(1).max(120),
-  position: vec3,
-  rotation: vec3,
-  connectors: z.array(connectorSchema),
+const hostSlotSchema = z.object({
+  target: z.enum(['Torres', 'Bases', 'Cubos', 'Outros', 'self']),
+  enabled: z.boolean(),
+  direction: z.enum(['top', 'bottom']),
+  pose: snapPoseSchema,
 })
 
 const upsertSchema = z.object({
@@ -59,8 +44,9 @@ const upsertSchema = z.object({
       ]),
     )
     .optional(),
-  inputPose: snapPoseSchema.nullable().optional(),
-  snapPoints: z.array(snapPointSchema),
+  dockAbove: snapPoseSchema.nullable().optional(),
+  dockBelow: snapPoseSchema.nullable().optional(),
+  hostSlots: z.array(hostSlotSchema).optional(),
   isActive: z.boolean().default(true),
 })
 
