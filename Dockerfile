@@ -14,13 +14,16 @@ FROM oven/bun:1.3-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Deps + código (uploads/objetos são baked aqui pra "semear" o volume
-# nomeado na primeira subida; uploads em runtime persistem no volume).
+# Deps + código.
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# GLBs do seed (versionados em seed-assets/) são copiados pra uploads/objetos
+# → ficam baked na imagem e "semeiam" o volume nomeado na 1ª subida. Uploads
+# feitos em runtime persistem no mesmo volume.
 # Permissões: roda como usuário não-root `bun` (já existe na imagem).
 RUN mkdir -p uploads/objetos \
+  && cp -r seed-assets/objetos/. uploads/objetos/ \
   && chmod +x ./docker-entrypoint.sh \
   && chown -R bun:bun /app
 USER bun

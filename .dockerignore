@@ -1,5 +1,6 @@
-# NÃO ignorar uploads/objetos: os GLBs do seed são baked na imagem pra
-# popular o volume nomeado na primeira subida.
+# GLBs do seed vivem em seed-assets/ (versionado) e são baked na imagem.
+# uploads/ (runtime) pode ser ignorado — vem do volume em produção.
+uploads
 node_modules
 .git
 .github

@@ -1,10 +1,20 @@
 # Auratec — stack de produção (VPS). Sobe Postgres + backend + frontend
-# atrás do Caddy (HTTPS automático). As imagens vêm do GHCR (publicadas
-# pelo CI). Variáveis vêm do arquivo `.env` ao lado (NÃO versionar).
+# atrás do Caddy (HTTPS automático). As imagens são BUILDADAS NA VPS a
+# partir do código enviado pelo CI (sem registry). Variáveis vêm do `.env`.
 #
-# Uso na VPS:
-#   docker compose -f compose.prod.yml --env-file .env pull
-#   docker compose -f compose.prod.yml --env-file .env up -d
+# Layout esperado na VPS (o CI cuida disso):
+#   ~/auratec/backend/   ← código do auratec-backend (contém este arquivo
+#                           em deploy/ e o Dockerfile)
+#   ~/auratec/frontend/  ← código do auratec-frontend
+#   ~/auratec/.env       ← segredos (criado uma vez, à mão)
+#
+# Uso na VPS (rodado pelo CI):
+#   cd ~/auratec/backend/deploy
+#   docker compose -f compose.prod.yml --env-file ~/auratec/.env up -d --build
+#
+# Os contexts de build são relativos a este arquivo (deploy/):
+#   backend  → ../            (=~/auratec/backend)
+#   frontend → ../../frontend (=~/auratec/frontend)
 name: auratec
 
 services:
@@ -25,7 +35,9 @@ services:
     networks: [internal]
 
   backend:
-    image: ghcr.io/kyzzk/auratec-backend:latest
+    build:
+      context: ..
+    image: auratec-backend:local
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -46,7 +58,13 @@ services:
     networks: [internal]
 
   frontend:
-    image: ghcr.io/kyzzk/auratec-frontend:latest
+    build:
+      context: ../../frontend
+      args:
+        # NEXT_PUBLIC_API_URL é inlined no build do Next. Vem do .env (igual
+        # ao PUBLIC_URL) — mesma origem do back, então sem CORS cruzado.
+        NEXT_PUBLIC_API_URL: ${PUBLIC_URL}
+    image: auratec-frontend:local
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -68,8 +86,11 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    # Só depende do backend pra ordem de start. NÃO depende do frontend de
+    # propósito: assim o deploy do backend não tenta buildar o frontend (que
+    # pode não estar na VPS no 1º deploy). O Caddy resolve frontend:3000 em
+    # runtime — devolve 502 até o frontend subir, sem precisar reiniciar.
     depends_on:
-      - frontend
       - backend
     networks: [internal]
 

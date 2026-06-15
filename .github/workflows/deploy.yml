@@ -1,4 +1,8 @@
-name: Deploy backend
+name: Deploy backend → VPS
+
+# Build acontece NA PRÓPRIA VPS (sem registry). O runner empacota o código
+# e envia por scp; a VPS builda e sobe via docker compose. Evita o circo de
+# registry/visibilidade e não precisa de credencial Git/registry na VPS.
 
 on:
   push:
@@ -10,73 +14,53 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: docker/setup-buildx-action@v3
-
-      - name: Login no GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Metadata (tags)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=raw,value=latest
-            type=sha,format=short
-
-      - name: Build & push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   deploy:
-    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # O backend é o "dono" da infra: envia compose + Caddyfile pra VPS.
-      - name: Copiar arquivos de deploy pra VPS
+      - name: Empacotar código
+        run: tar czf /tmp/auratec-backend.tgz --exclude=./.git .
+
+      - name: Enviar pra VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
-          source: "deploy/compose.prod.yml,deploy/Caddyfile"
+          source: "/tmp/auratec-backend.tgz"
           target: "~/auratec"
-          strip_components: 1
 
-      - name: Deploy na VPS
+      - name: Build & up na VPS
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
+          command_timeout: 20m
           script: |
-            set -e
-            cd ~/auratec
-            if [ -n "${{ secrets.GHCR_PAT }}" ]; then
-              echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.GHCR_USER }}" --password-stdin
+            set -eu
+
+            # Serializa com o deploy do frontend (mesmo compose/volumes).
+            mkdir -p ~/auratec
+            exec 9>~/auratec/.deploy.lock
+            flock -x -w 600 9 || { echo "Outro deploy em andamento (>10min)"; exit 1; }
+
+            if [ ! -f ~/auratec/.env ]; then
+              echo "❌ ~/auratec/.env não existe. Crie a partir de deploy/.env.prod.example."
+              exit 1
             fi
-            docker compose -f compose.prod.yml --env-file .env pull
-            docker compose -f compose.prod.yml --env-file .env up -d
+
+            # Substitui o código do backend pelo pacote recém-enviado.
+            rm -rf ~/auratec/backend
+            mkdir -p ~/auratec/backend
+            tar xzf ~/auratec/auratec-backend.tgz -C ~/auratec/backend
+            rm -f ~/auratec/auratec-backend.tgz
+
+            cd ~/auratec/backend/deploy
+            # --build recompila o que mudou (cache de layers local resolve o resto).
+            # O entrypoint do backend roda as migrations no start do container.
+            docker compose -f compose.prod.yml --env-file ~/auratec/.env up -d --build --remove-orphans backend caddy postgres
             docker image prune -f
