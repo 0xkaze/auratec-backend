@@ -47,7 +47,7 @@ Em **ambos** os repos (`auratec-backend` e `auratec-frontend`) → Settings → 
 |---|---|
 | `SSH_HOST` | IP/host da VPS |
 | `SSH_USER` | usuário SSH (o dono de `~/auratec`) |
-| `SSH_KEY` | chave **privada** SSH (a pública vai no `~/.ssh/authorized_keys` da VPS) |
+| `SSH_PASSWORD` | senha SSH do usuário (a VPS precisa permitir `PasswordAuthentication yes`) |
 | `SSH_PORT` | porta SSH (ex. `22`) |
 | `GHCR_USER` | seu user do GitHub — **só se** os pacotes GHCR forem privados |
 | `GHCR_PAT` | token com `read:packages` — **só se** privados (senão deixe em branco) |
