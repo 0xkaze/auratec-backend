@@ -19,8 +19,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Tar DENTRO do workspace (o scp-action roda num container que só
+      # monta o workspace — não enxerga /tmp). Exclui .git e o próprio tar.
       - name: Empacotar código
-        run: tar czf /tmp/auratec-backend.tgz --exclude=./.git .
+        run: tar czf auratec-backend.tgz --exclude=./.git --exclude=./auratec-backend.tgz .
 
       - name: Enviar pra VPS
         uses: appleboy/scp-action@v0.1.7
@@ -29,7 +31,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
-          source: "/tmp/auratec-backend.tgz"
+          source: "auratec-backend.tgz"
           target: "~/auratec"
 
       - name: Build & up na VPS

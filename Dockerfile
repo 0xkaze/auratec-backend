@@ -23,7 +23,7 @@ COPY . .
 # feitos em runtime persistem no mesmo volume.
 # Permissões: roda como usuário não-root `bun` (já existe na imagem).
 RUN mkdir -p uploads/objetos \
-  && cp -r seed-assets/objetos/. uploads/objetos/ \
+  && (cp -r seed-assets/objetos/. uploads/objetos/ 2>/dev/null || echo "WARN: seed-assets/objetos ausente — sem GLBs baked (commite seed-assets/)") \
   && chmod +x ./docker-entrypoint.sh \
   && chown -R bun:bun /app
 USER bun
