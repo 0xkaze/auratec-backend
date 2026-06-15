@@ -56,7 +56,7 @@ Em **ambos** os repos (`auratec-backend` e `auratec-frontend`) → Settings → 
 
 | Variable | Valor |
 |---|---|
-| `NEXT_PUBLIC_API_URL` | `https://app.seudominio.com` (igual ao `PUBLIC_URL` do `.env`) |
+| `NEXT_PUBLIC_API_URL` | `https://auratec.gmstech.dev` (igual ao `PUBLIC_URL` do `.env`) |
 
 > `NEXT_PUBLIC_API_URL` é embutido no build do Next, por isso é uma *variable* (não secret) e precisa estar setada antes do build do front.
 >
