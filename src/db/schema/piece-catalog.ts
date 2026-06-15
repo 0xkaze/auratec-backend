@@ -98,10 +98,14 @@ export const pieceCatalog = pgTable('piece_catalog', {
    */
   dockBelow: jsonb('dock_below').$type<SnapPose | null>(),
   /**
-   * STEP 3 — slots fixos por alvo (Torres/Bases/Cubos/Outros/self):
-   * como cada tipo de peça encaixa NESTA. Default [] = nada encaixa.
+   * STEP 3 — pontos de encaixe (snaps) NESTA peça (pode ter vários).
+   * Cada um aceita os tipos de peça em `targets`. Default [] = nada encaixa.
    */
   hostSlots: jsonb('host_slots').$type<HostSlot[]>().notNull().default([]),
+  /** Peça terminal: não encaixa em nada de propósito (vs. config pela metade). */
+  isTerminal: boolean('is_terminal'),
+  /** Último "Testar montagem" que passou. Selo verde lê isto. null = não testado. */
+  verifiedAt: timestamp('verified_at', { withTimezone: true }),
   /** Soft-delete pra admin "esconder" sem perder histórico. */
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

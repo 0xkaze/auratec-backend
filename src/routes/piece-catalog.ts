@@ -48,6 +48,8 @@ const upsertSchema = z.object({
   dockAbove: snapPoseSchema.nullable().optional(),
   dockBelow: snapPoseSchema.nullable().optional(),
   hostSlots: z.array(hostSlotSchema).optional(),
+  isTerminal: z.boolean().nullable().optional(),
+  verifiedAt: z.coerce.date().nullable().optional(),
   isActive: z.boolean().default(true),
 })
 
