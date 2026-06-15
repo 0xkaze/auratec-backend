@@ -73,23 +73,30 @@ async function ensureAdmin() {
 
 async function ensureCatalog() {
   let inserted = 0
-  let updated = 0
+  let skipped = 0
   for (const piece of CATALOG) {
     const existing = await db.query.pieceCatalog.findFirst({ where: eq(pieceCatalog.type, piece.type) })
     if (existing) {
-      await db.update(pieceCatalog).set({ ...piece, updatedAt: new Date() }).where(eq(pieceCatalog.id, existing.id))
-      updated++
+      // INSERT-ONLY: não sobrescreve peças já existentes. Crucial porque o
+      // admin configura snaps/poses (Outros) pelo banco — re-semear não pode
+      // apagar isso. Pra re-semear uma peça do zero, delete-a antes.
+      skipped++
     } else {
       await db.insert(pieceCatalog).values(piece)
       inserted++
     }
   }
-  console.log(`  ✓ Catálogo: ${inserted} inseridas, ${updated} atualizadas`)
+  console.log(`  ✓ Catálogo: ${inserted} inseridas, ${skipped} já existiam (mantidas)`)
 }
 
 async function main() {
   console.log('🌱 Seed do banco…')
-  await ensureAdmin()
+  // SEED_CATALOG_ONLY=true (usado no boot em produção): só semeia o catálogo,
+  // sem criar o admin padrão (senha conhecida = risco em prod). Em prod o
+  // admin sai do ADMIN_EMAILS (registrar com esse email vira admin).
+  if (process.env.SEED_CATALOG_ONLY !== 'true') {
+    await ensureAdmin()
+  }
   await ensureCatalog()
   console.log('✅ Seed concluído.')
   process.exit(0)
