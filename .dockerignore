@@ -1,0 +1,15 @@
+# NÃO ignorar uploads/objetos: os GLBs do seed são baked na imagem pra
+# popular o volume nomeado na primeira subida.
+node_modules
+.git
+.github
+.env
+.env.local
+.env.*.local
+dist
+*.log
+.DS_Store
+deploy
+README.md
+.vscode
+.idea

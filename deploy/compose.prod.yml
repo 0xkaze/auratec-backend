@@ -1,0 +1,83 @@
+# Auratec — stack de produção (VPS). Sobe Postgres + backend + frontend
+# atrás do Caddy (HTTPS automático). As imagens vêm do GHCR (publicadas
+# pelo CI). Variáveis vêm do arquivo `.env` ao lado (NÃO versionar).
+#
+# Uso na VPS:
+#   docker compose -f compose.prod.yml --env-file .env pull
+#   docker compose -f compose.prod.yml --env-file .env up -d
+name: auratec
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+
+  backend:
+    image: ghcr.io/kyzzk/auratec-backend:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      CORS_ORIGINS: ${PUBLIC_URL}
+      FRONTEND_URL: ${PUBLIC_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-7d}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+    volumes:
+      # GLBs enviados pelo admin persistem aqui. Na 1ª subida o Docker
+      # copia os GLBs baked na imagem (uploads/objetos) pro volume.
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [internal]
+
+  frontend:
+    image: ghcr.io/kyzzk/auratec-frontend:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+    depends_on:
+      - backend
+    networks: [internal]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+    networks: [internal]
+
+volumes:
+  pgdata:
+  uploads:
+  caddy_data:
+  caddy_config:
+
+networks:
+  internal:

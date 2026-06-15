@@ -1,0 +1,18 @@
+# Caddy — proxy reverso + HTTPS automático (Let's Encrypt).
+# Um domínio só: API/estáticos do backend sob caminhos fixos, resto
+# vai pro Next. PUBLIC_DOMAIN vem do ambiente (compose).
+
+{$PUBLIC_DOMAIN} {
+	encode zstd gzip
+
+	# Backend: API, GLBs estáticos e health-check.
+	@backend path /api/* /objetos/* /health
+	handle @backend {
+		reverse_proxy backend:3001
+	}
+
+	# Tudo o mais → frontend (Next.js).
+	handle {
+		reverse_proxy frontend:3000
+	}
+}
