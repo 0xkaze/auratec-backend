@@ -16,3 +16,45 @@
 		reverse_proxy frontend:3000
 	}
 }
+
+# ── Z6 Market: cole este bloco no Caddyfile do auratec (o Caddy que já roda na VPS) ──
+#
+# Pré-requisitos:
+#   1) docker network create gmstech-web
+#   2) conectar o Caddy do auratec a essa rede (uma vez):
+#        docker network connect gmstech-web <container-do-caddy>
+#      (ou adicionar `gmstech-web` (external) às networks do serviço caddy no compose dele)
+#   3) DNS: z6market.gmstech.dev → IP da VPS
+#
+# O Caddy resolve `z6-backend`/`z6-frontend` pelo nome (rede compartilhada) e
+# provisiona o HTTPS do subdomínio automaticamente. WebSocket passa transparente.
+
+z6market.gmstech.dev {
+	encode zstd gzip
+	request_body {
+		max_size 12MB
+	}
+
+	# WebSocket de tempo real → backend.
+	@ws path /ws
+	handle @ws {
+		reverse_proxy z6-backend:3333
+	}
+
+	# API REST → backend.
+	handle /api/* {
+		reverse_proxy z6-backend:3333
+	}
+
+	# Tudo o mais → frontend Next.js.
+	handle {
+		reverse_proxy z6-frontend:3000
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
