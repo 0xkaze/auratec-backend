@@ -16,7 +16,6 @@
 		reverse_proxy frontend:3000
 	}
 }
-
 # ── Z6 Market: cole este bloco no Caddyfile do auratec (o Caddy que já roda na VPS) ──
 #
 # Pré-requisitos:
@@ -24,12 +23,17 @@
 #   2) conectar o Caddy do auratec a essa rede (uma vez):
 #        docker network connect gmstech-web <container-do-caddy>
 #      (ou adicionar `gmstech-web` (external) às networks do serviço caddy no compose dele)
-#   3) DNS: z6market.gmstech.dev → IP da VPS
+#   3) DNS (todos → IP da VPS, para o Caddy emitir o HTTPS de cada um):
+#        z6market.com.br        A    <IP>     (apex — domínio CANÔNICO)
+#        www.z6market.com.br    A    <IP>     (registro.br não aceita CNAME no apex; use A)
+#        z6market.com           A    <IP>
+#        www.z6market.com       A    <IP>
 #
 # O Caddy resolve `z6-backend`/`z6-frontend` pelo nome (rede compartilhada) e
-# provisiona o HTTPS do subdomínio automaticamente. WebSocket passa transparente.
+# provisiona o HTTPS de cada domínio automaticamente. WebSocket passa transparente.
 
-z6market.gmstech.dev {
+# ── Domínio CANÔNICO (serve o app) ──────────────────────────────────────────
+z6market.com.br {
 	encode zstd gzip
 	request_body {
 		max_size 12MB
@@ -57,4 +61,11 @@ z6market.gmstech.dev {
 		Referrer-Policy "strict-origin-when-cross-origin"
 		-Server
 	}
+}
+
+# ── Aliases → 301 para o canônico ───────────────────────────────────────────
+# Mantém sessão/OAuth/SEO num lugar só. O app só funciona no apex z6market.com.br;
+# www, o domínio .com e o subdomínio antigo redirecionam pra cá.
+www.z6market.com.br, z6market.com, www.z6market.com, z6market.gmstech.dev {
+	redir https://z6market.com.br{uri} permanent
 }
